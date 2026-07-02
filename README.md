@@ -94,14 +94,14 @@ BIN listings that disappeared from eBay are automatically dropped.
 
 (`EBAY_APP_ID`, `EBAY_CERT_ID`, and all other vars are loaded from `.env` automatically.)
 
-## Scheduling (Windows — Task Scheduler, every 2 hours)
+## Scheduling (Windows — Task Scheduler, ex: every 2 hours)
 
 Windows has no cron. Create a `run.bat` wrapper in the project directory:
 
 ```bat
 @echo off
 cd /d %~dp0
-python search.py >> output\search.log 2>&1
+python -X utf8 search.py >> output\search.log 2>&1
 ```
 
 Then register the task (adjust path to your install location):
