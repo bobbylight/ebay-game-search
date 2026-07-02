@@ -67,7 +67,7 @@ def _send_notification(new_listings: list[dict], report_url: str | None) -> None
         if counts["bin"]:
             parts.append(f"{counts['bin']} BIN")
         price_str = f" (from ${counts['min_price']:.2f})" if counts["min_price"] is not None else ""
-        lines.append(f"• {game}: {', '.join(parts)}{price_str}")
+        lines.append(f"🎮 {game}: {', '.join(parts)}{price_str}")
 
     body = "\n".join(lines)
     ok = notify.send(topic, title, body, url=report_url)
