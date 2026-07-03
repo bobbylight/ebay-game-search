@@ -60,7 +60,7 @@ a:hover { text-decoration: underline; }
 .deal    { background: #dcfce7; color: #166534; }
 .count-badges { margin-left: auto; display: flex; gap: .35rem; flex-shrink: 0; align-items: center; }
 details.game.hidden-by-filter, details.game.hidden-by-type { display: none; }
-tr.hidden-by-type, tr.hidden-by-deal { display: none; }
+tr.hidden-by-type, tr.hidden-by-deal, tr.hidden-by-new { display: none; }
 .ending-soon { color: #dc2626; font-weight: 600; }
 .good-deal { color: #16a34a; font-weight: 700; }
 .new-badge { background: #dcfce7; color: #166534; border: 1px solid #86efac;
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateGameVisibility() {
         document.querySelectorAll('details.game').forEach(function (section) {
             const hasVisible = Array.from(section.querySelectorAll('tbody tr')).some(function (tr) {
-                return !tr.classList.contains('hidden-by-type') && !tr.classList.contains('hidden-by-deal');
+                return !tr.classList.contains('hidden-by-type') && !tr.classList.contains('hidden-by-deal') && !tr.classList.contains('hidden-by-new');
             });
             section.classList.toggle('hidden-by-filter', !hasVisible);
         });
@@ -138,6 +138,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     var price = parseFloat(priceTd ? priceTd.dataset.price : '');
                     tr.classList.toggle('hidden-by-deal', isNaN(pcPrice) || price >= pcPrice);
                 }
+            });
+            updateGameVisibility();
+        });
+    }
+
+    var newBtn = document.querySelector('.legend-filter[data-filter="new"]');
+    if (newBtn) {
+        newBtn.addEventListener('click', function () {
+            var nowOff = newBtn.classList.toggle('off');
+            document.querySelectorAll('tbody tr').forEach(function (tr) {
+                tr.classList.toggle('hidden-by-new', !nowOff && tr.dataset.new !== 'true');
             });
             updateGameVisibility();
         });
@@ -243,9 +254,10 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
 
     legend_html = """<div class="legend">
   <strong>Filter:</strong>
-  <button class="legend-filter" data-filter="deal"><span class="badge deal">📉 Under PC Value</span> - Only show listings below PriceCharting value</button>
+  <button class="legend-filter" data-filter="deal"><span class="badge deal">📉 Bargain</span> - Below PriceCharting value</button>
   <button class="legend-filter" data-filter="auction"><span class="badge auction">🔨 Auction</span> - Active bid with end time</button>
   <button class="legend-filter" data-filter="bin"><span class="badge bin">🛒 BIN</span> - Buy It Now</button>
+  <button class="legend-filter off" data-filter="new"><span class="new-badge">✦ New</span> - New listings</button>
 </div>"""
 
     filter_html = """<div class="filter-box">
@@ -298,7 +310,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
             end_cls = ' class="ending-soon"' if soon else ""
             pc_attr = f'{list_price:.2f}' if list_price is not None else ""
             trs.append(
-                f'<tr data-type="{row_type}" data-pc-price="{pc_attr}">'
+                f'<tr data-type="{row_type}" data-pc-price="{pc_attr}" data-new="{"true" if is_new else "false"}">'
                 f'<td>{img}</td>'
                 f'<td data-label="Type">{badge}</td>'
                 f'<td data-label=""><a href="{r.get("url", "#")}" target="_blank">{r.get("title", "")}</a></td>'
