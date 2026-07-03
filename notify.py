@@ -5,7 +5,7 @@ _ICON_URL = "https://raw.githubusercontent.com/bobbylight/ebay-game-search/refs/
 
 
 def send(topic: str, title: str, body: str, url: str | None = None) -> bool:
-    headers = {"Title": title, "Icon": _ICON_URL}
+    headers = {"Title": title, "Icon": _ICON_URL, "Attach": _ICON_URL}
     if url:
         headers["Click"] = url
     try:
