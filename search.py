@@ -52,6 +52,7 @@ def _send_notification(new_listings: list[dict], report_url: str | None) -> None
         by_game[lst["game_name"]][key] += 1
         p = lst.get("price")
         if p is not None:
+            p += lst.get("shipping_price") or 0
             cur = by_game[lst["game_name"]]["min_price"]
             by_game[lst["game_name"]]["min_price"] = p if cur is None else min(cur, p)
 
@@ -103,7 +104,8 @@ def main():
         print("ERROR: EBAY_APP_ID and EBAY_CERT_ID must be set in .env", file=sys.stderr)
         sys.exit(1)
 
-    client = EbayClient(app_id, cert_id)
+    buyer_zip = os.getenv("EBAY_BUYER_ZIP", "") or None
+    client = EbayClient(app_id, cert_id, buyer_zip=buyer_zip)
     run_id = start_run()
 
     total = 0
