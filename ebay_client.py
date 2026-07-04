@@ -8,9 +8,10 @@ SCOPE = "https://api.ebay.com/oauth/api_scope"
 
 
 class EbayClient:
-    def __init__(self, app_id: str, cert_id: str):
+    def __init__(self, app_id: str, cert_id: str, buyer_zip: str | None = None):
         self._app_id = app_id
         self._cert_id = cert_id
+        self._buyer_zip = buyer_zip
         self._token: str | None = None
         self._token_expiry: float = 0
 
@@ -41,12 +42,18 @@ class EbayClient:
         If non-game items are still too common, we can add a Claude classification
         step here to verify each listing title refers to the actual cartridge.
         """
+        headers = {
+            "Authorization": f"Bearer {self._get_token()}",
+            "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
+        }
+        if self._buyer_zip:
+            # Without this, eBay estimates CALCULATED shipping to a generic
+            # default location instead of the buyer's actual zip.
+            headers["X-EBAY-C-ENDUSERCTX"] = f"contextualLocation=country=US,zip={self._buyer_zip}"
+
         resp = requests.get(
             BROWSE_URL,
-            headers={
-                "Authorization": f"Bearer {self._get_token()}",
-                "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
-            },
+            headers=headers,
             params={
                 "q": f"{name} {platform}",
                 "category_ids": "139973",

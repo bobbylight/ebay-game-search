@@ -61,6 +61,9 @@ a:hover { text-decoration: underline; }
 .count-badges { margin-left: auto; display: flex; gap: .35rem; flex-shrink: 0; align-items: center; }
 details.game.hidden-by-filter, details.game.hidden-by-type { display: none; }
 tr.hidden-by-type, tr.hidden-by-deal, tr.hidden-by-new { display: none; }
+.ship-note { font-size: .78rem; color: #999; white-space: nowrap; }
+.ship-note.free { color: #16a34a; }
+.ship-note.unknown { font-style: italic; }
 .ending-soon { color: #dc2626; font-weight: 600; }
 .good-deal { color: #16a34a; font-weight: 700; }
 .new-badge { background: #dcfce7; color: #166534; border: 1px solid #86efac;
@@ -229,8 +232,20 @@ def _fmt_end(ts: str | None) -> tuple[str, bool, float]:
     return f"{int(hours // 24)}d {int(hours % 24)}h", soon, hours
 
 
+def _effective_price(row: dict) -> float | None:
+    """Item price plus shipping, i.e. the actual all-in cost to compare against
+    PriceCharting. Unknown shipping (local pickup/freight, no shippingOptions
+    returned) is treated as 0 here — a listing with genuinely unknown shipping
+    shouldn't be excluded from ranking, just flagged in the UI (see _JS/_CSS
+    ship-note styling)."""
+    price = row.get("price")
+    if price is None:
+        return None
+    return price + (row.get("shipping_price") or 0)
+
+
 def _cheapest_n(rows: list[dict], n: int) -> list[dict]:
-    return sorted(rows, key=lambda r: (r.get("price") is None, r.get("price") or 0))[:n]
+    return sorted(rows, key=lambda r: (_effective_price(r) is None, _effective_price(r) or 0))[:n]
 
 
 def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, new_ids: set[str] = frozenset()) -> Path:
@@ -254,7 +269,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
 
     legend_html = """<div class="legend">
   <strong>Filter:</strong>
-  <button class="legend-filter" data-filter="deal"><span class="badge deal">📉 Bargain</span> - Below PriceCharting value</button>
+  <button class="legend-filter" data-filter="deal"><span class="badge deal">📉 Bargain</span> - Below PriceCharting value (price + shipping)</button>
   <button class="legend-filter" data-filter="auction"><span class="badge auction">🔨 Auction</span> - Active bid with end time</button>
   <button class="legend-filter" data-filter="bin"><span class="badge bin">🛒 BIN</span> - Buy It Now</button>
   <button class="legend-filter off" data-filter="new"><span class="new-badge">✦ New</span> - New listings</button>
@@ -282,7 +297,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
             f'<span class="badge bin">🛒 {bin_cnt}</span>'
             f'</span>'
         )
-        prices = [r["price"] for r in rows if r.get("price") is not None]
+        prices = [p for r in rows if (p := _effective_price(r)) is not None]
         if prices:
             lo, hi = min(prices), max(prices)
             ebay_range = (f'<span class="ebay-range">'
@@ -299,10 +314,22 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
             new_row_badge = ' <span class="new-badge">✦ New</span>' if is_new else ""
             badge = f"{type_badge}{new_row_badge}"
             price_val = r.get("price")
-            price_attr = f'{price_val:.2f}' if price_val is not None else "9999"
+            shipping_val = r.get("shipping_price")
+            effective_val = _effective_price(r)
+            price_attr = f'{effective_val:.2f}' if effective_val is not None else "9999"
             price_disp = f'${price_val:.2f}' if price_val is not None else "—"
+            if shipping_val is None and r.get("shipping_cost_type") == "CALCULATED":
+                # eBay's API frequently can't price CALCULATED shipping (errorId
+                # 11510) even with a buyer zip supplied - not a fetch failure.
+                ship_note = ' <span class="ship-note unknown">+ ship: calc.</span>'
+            elif shipping_val is None:
+                ship_note = ' <span class="ship-note unknown">+ ship?</span>'
+            elif shipping_val > 0:
+                ship_note = f' <span class="ship-note">+ ${shipping_val:.2f} ship</span>'
+            else:
+                ship_note = ' <span class="ship-note free">+ free ship</span>'
             list_price = game.get("list_price")
-            price_cls = " good-deal" if (price_val is not None and list_price and price_val < list_price) else ""
+            price_cls = " good-deal" if (effective_val is not None and list_price and effective_val < list_price) else ""
             bids = f' <span style="color:#999;font-size:.8rem">({r["bid_count"]} bids)</span>' if r.get("bid_count") else ""
             img = f'<img class="thumb" src="{r["image_url"]}">' if r.get("image_url") else ""
             cond = r.get("condition") or "—"
@@ -314,7 +341,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
                 f'<td>{img}</td>'
                 f'<td data-label="Type">{badge}</td>'
                 f'<td data-label=""><a href="{r.get("url", "#")}" target="_blank">{r.get("title", "")}</a></td>'
-                f'<td data-label="Price" data-price="{price_attr}" class="price{price_cls}">{price_disp}{bids}</td>'
+                f'<td data-label="Price" data-price="{price_attr}" class="price{price_cls}">{price_disp}{ship_note}{bids}</td>'
                 f'<td data-label="Cond." data-condition="{cond}">{cond}</td>'
                 f'<td data-label="Seller">{r.get("seller") or "—"}</td>'
                 f'<td data-label="Ends" data-hours="{hours_val:.2f}"{end_cls}>{end_str}</td>'
