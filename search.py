@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
 
+import denylist
 import notify
 import wishlist as wl
 from ebay_client import EbayClient
@@ -119,9 +120,18 @@ def main():
         except Exception as e:
             print(f"  {game['name']}: FAILED ({e})", file=sys.stderr)
             continue
+
+        # Filter out auctions whose titles have keywords that indicate they're NOT what we're looking
+        # for. Typical with e.g. games with sequels, or on multiple platforms, etc., where we might
+        # get false positives from our search results
+        fetched = len(items)
+        items = [it for it in items if not denylist.is_denied(game["name"], it.get("title", ""))]
+        denied = fetched - len(items)
+
         n = upsert_listings(items, game["name"], run_id)
         total += n
-        print(f"  {game['name']}: {len(items)} results")
+        suffix = f" ({denied} denylisted)" if denied else ""
+        print(f"  {game['name']}: {len(items)} results{suffix}")
 
     new_listings = get_new_listings(run_id)
     new_ids = {l["item_id"] for l in new_listings}
