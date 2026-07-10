@@ -4,6 +4,15 @@ from pathlib import Path
 
 OUTPUT = Path(__file__).parent / "output" / "report.html"
 
+# 16x13 matches the .82rem (~13px) size of .pc-price text at native resolution.
+_PC_ICON_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAAABHNCSVQICAgIfAhkiAAAAKhJREFU"
+    "KJFjZCACMJZd/Q9j/+/SZkSRI0UzNkMgjMIzbxlZOYWIcQ26ISzYbCAFMBFr2//NFYFkGfC/S5ux"
+    "dqnTfz3BU5/+d2kzwnDtUqf/DAwMDIz4vICsEAbmN54xT6w3OQnj4zQAm2aivYCuuTl6H2Nz9D7G"
+    "Z/c/bcdQjOwCGLt2qdNXQjajuA6Zo2cr7kxIM4oD0A1ojt5HMHUiA5QwIFUzAwMDAwA9X03AGa9W"
+    "/QAAAABJRU5ErkJggg=="
+)
+
 _CSS = """
 * { box-sizing: border-box; }
 body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; background: #f0f2f5; color: #1a1a1a; }
@@ -40,6 +49,7 @@ details.game[open] summary { border-bottom: 1px solid #f0f0f0; border-radius: 8p
 .game-body { padding: .75rem 1.25rem 1rem; }
 details.game summary h2 { margin: 0; font-size: 1.05rem; }
 .pc-price   { font-size: .82rem; color: #999; }
+.pc-icon    { width: 16px; height: 13px; vertical-align: -1px; }
 .ebay-range { font-size: .82rem; color: #2563eb; font-weight: 600; display: inline-flex; align-items: center; gap: .25rem; }
 table { width: 100%; border-collapse: collapse; }
 th { text-align: left; padding: .35rem .6rem; font-size: .75rem; color: #999; border-bottom: 1px solid #eee;
@@ -269,7 +279,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
 
     legend_html = """<div class="legend">
   <strong>Filter:</strong>
-  <button class="legend-filter" data-filter="deal"><span class="badge deal">📉 Bargain</span> - Below PriceCharting value (price + shipping)</button>
+  <button class="legend-filter" data-filter="deal"><span class="badge deal">📉 Bargain</span> - Below PC value (price + shipping)</button>
   <button class="legend-filter" data-filter="auction"><span class="badge auction">🔨 Auction</span> - Active bid with end time</button>
   <button class="legend-filter" data-filter="bin"><span class="badge bin">🛒 BIN</span> - Buy It Now</button>
   <button class="legend-filter off" data-filter="new"><span class="new-badge">✦ New</span> - New listings</button>
@@ -285,7 +295,9 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
         rows = by_game.get(game["name"])
         if not rows:
             continue
-        pc = f'<span class="pc-price">PriceCharting: ${game["list_price"]:.2f}</span>' if game.get("list_price") else ""
+        pc = (f'<span class="pc-price">'
+              f'<img class="pc-icon" src="data:image/png;base64,{_PC_ICON_B64}" alt="PriceCharting">'
+              f': ${game["list_price"]:.2f}</span>') if game.get("list_price") else ""
         auction_cnt = sum(1 for r in rows if r.get("buying_option") == "AUCTION")
         bin_cnt = len(rows) - auction_cnt
         has_new = any(r.get("item_id") in new_ids for r in rows)

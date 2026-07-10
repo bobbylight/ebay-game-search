@@ -22,6 +22,8 @@ GLOBAL_DENYLIST: list[str] = [
     " SNES",          # Leading space, while not perfect, to do a "word" match
     "(SNES",
     "famicom",
+    "gameboy",
+    "game boy",       # not looking for Game Boy games for now
     "not tested",
 ]
 
