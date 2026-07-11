@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+import os
 
 OUTPUT = Path(__file__).parent / "output" / "report.html"
 
@@ -270,6 +271,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
     bin_count = len(trimmed) - auction_count
     games_with = sum(1 for g in games if g["name"] in by_game)
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    wishlist_url = os.getenv("PRICECHARTING_WISHLIST_URL", "")
 
     summary_html = """<div class="summary">
   <div class="stat"><div class="n">{gw}/{gt}</div><div class="label">Games with listings</div></div>
@@ -279,7 +281,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
 
     legend_html = """<div class="legend">
   <strong>Filter:</strong>
-  <button class="legend-filter" data-filter="deal"><span class="badge deal">📉 Bargain</span> - Below PC value (price + shipping)</button>
+  <button class="legend-filter" data-filter="deal"><span class="badge deal">📉 Bargain</span> - Below PC value</button>
   <button class="legend-filter" data-filter="auction"><span class="badge auction">🔨 Auction</span> - Active bid with end time</button>
   <button class="legend-filter" data-filter="bin"><span class="badge bin">🛒 BIN</span> - Buy It Now</button>
   <button class="legend-filter off" data-filter="new"><span class="new-badge">✦ New</span> - New listings</button>
@@ -394,7 +396,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
   <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAABg0lEQVR4nO3Yv0rDUBQG8KCDgz6AjtnsG+iaSd9AZxcjdOq5RacsQn0C9Q10dapLZx3d/LN8B0TaLNk61iuFikVC7r1pI0c4H3xDA5eeX+4NKY0ijUaj0WhKwsxbzGyX3TiOK8slawBsRqEBsC8IsFcHcCYIcBoMYObbJgCDwaCyXL7upg7gRRDgOWj44XC4DmAiBQBgkuf5hjcAwG4Twy+wAxbATgggFQg49gYw87U0ADNfhQAeBQIevIa31q4CGEsDABhPZ3MCALSaGn7BHbAAtn0AhyFfGNo6b2L+ARz4AC6kApi55wQw830ZYFlHaEFA3wcwEgzInYCiKOx8vwG/r9dtkiSVLRzrFfB2knpVAYUeoeJ/Aowxtsm6AKZiLRF9OAFENBEMePcB3DUNmP7onTaZDT3/2bH+0gnodDqJz51zXW8A8NntdltOwGwXngQC+l7Dz3bhSNoRIiL/f+fa7fYaEY0EPcSvWZatRCExxpxLARBRGjS8RqPRaDSa6G/yBXY7jBJLE1gkAAAAAElFTkSuQmCC" alt="nintendo-entertainment-system">
   eBay NES Game Tracker
 </h1>
-<p class="meta">Generated: {now_str} &mdash; showing up to {limit_per_game} cheapest listings per game</p>
+<p class="meta">The {limit_per_game} cheapest listings for games <a href="{wishlist_url}">on my PriceCharting wishlist</a>. Last updated {now_str}</p>
 <div class="top-controls">
 {summary_html}
 {filter_html}
