@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS listings (
     url           TEXT,
     image_url     TEXT,
     listed_date   TEXT,
+    epid          TEXT,
     first_seen    TEXT NOT NULL,
     last_seen     TEXT NOT NULL,
     last_run_id   INTEGER NOT NULL REFERENCES runs(id)
@@ -50,6 +51,8 @@ def _conn() -> sqlite3.Connection:
         con.execute("ALTER TABLE listings ADD COLUMN original_price REAL")
     if "listed_date" not in existing_cols:
         con.execute("ALTER TABLE listings ADD COLUMN listed_date TEXT")
+    if "epid" not in existing_cols:
+        con.execute("ALTER TABLE listings ADD COLUMN epid TEXT")
     return con
 
 
@@ -107,8 +110,8 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
             INSERT INTO listings
                 (item_id, game_name, title, price, shipping_price, shipping_cost_type, currency, buying_option,
                  has_best_offer, end_time, bid_count, condition, seller, original_price, url, image_url,
-                 listed_date, first_seen, last_seen, last_run_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 listed_date, epid, first_seen, last_seen, last_run_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(item_id) DO UPDATE SET
                 price              = excluded.price,
                 shipping_price     = excluded.shipping_price,
@@ -138,6 +141,7 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
                 item.get("itemWebUrl"),
                 (item.get("image") or {}).get("imageUrl"),
                 item.get("itemCreationDate"),
+                item.get("epid"),
                 now, now, run_id,
             ),
         )
