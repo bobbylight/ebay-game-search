@@ -21,13 +21,14 @@ GLOBAL_DENYLIST: list[str] = [
     "Super NES",
     " SNES",          # Leading space, while not perfect, to do a "word" match
     "(SNES",
+    "gameboy",        # not looking for Game Boy games for now
+    "game boy",
     "famicom",
-    "gameboy",
-    "game boy",       # not looking for Game Boy games for now
-    "not tested",
+    "not tested",     # Skip games that may not actually work
+    "untested",
 ]
 
-DENYLIST: dict[str, list[str]] = {
+PER_GAME_DENYLIST: dict[str, list[str]] = {
     # "Kid Icarus": ["reproduction", "repro", "manual only"],
     "Godzilla 2": [
         "Monster of Monsters",  # Subtitle of Godzilla 1, which is most often returned from searches
@@ -35,7 +36,7 @@ DENYLIST: dict[str, list[str]] = {
 }
 
 _GLOBAL_DENYLIST_LOWER = [w.lower() for w in GLOBAL_DENYLIST]
-_DENYLIST_LOWER = {k.lower(): [w.lower() for w in v] for k, v in DENYLIST.items()}
+_PER_GAME_DENYLIST_LOWER = {k.lower(): [w.lower() for w in v] for k, v in PER_GAME_DENYLIST.items()}
 
 
 def is_denied(game_name: str, title: str) -> bool:
@@ -43,7 +44,7 @@ def is_denied(game_name: str, title: str) -> bool:
     title_lower = title.lower()
     if any(w in title_lower for w in _GLOBAL_DENYLIST_LOWER):
         return True
-    words = _DENYLIST_LOWER.get(game_name.lower())
+    words = _PER_GAME_DENYLIST_LOWER.get(game_name.lower())
     if not words:
         return False
     return any(w in title_lower for w in words)

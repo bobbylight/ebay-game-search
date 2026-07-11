@@ -17,13 +17,25 @@ Pipeline, run start-to-finish by `search.py`:
    API search per game (`q = "{name} {platform}"`, `category_ids=139973` to cut down on
    guides/cases/repro noise). No retry/backoff logic.
 3. **`store.py`** — SQLite (`output/listings.db`). `listings.item_id` is the primary
-   key; `ON CONFLICT` only updates `price`, `bid_count`, `last_seen`, `last_run_id` —
-   NOT `game_name`. If the same eBay item ever matches more than one game's search
-   query, it keeps whichever `game_name` it was first inserted under.
-4. **`report.py`** — generates a single self-contained HTML file: all CSS/JS are inline
+   key; `ON CONFLICT` only updates `price`, `shipping_price`, `shipping_cost_type`,
+   `has_best_offer`, `bid_count`, `last_seen`, `last_run_id` — NOT `game_name`. If the
+   same eBay item ever matches more than one game's search query, it keeps whichever
+   `game_name` it was first inserted under. `has_best_offer` is derived from whether
+   `"BEST_OFFER"` is in the Browse API's `buyingOptions` for that item (i.e. "Make
+   Offer" is enabled), separate from `buying_option` (AUCTION vs FIXED_PRICE).
+4. **`denylist.py`** — filters listings by title before they're stored/reported.
+   `GLOBAL_DENYLIST` applies to every search; `PER_GAME_DENYLIST` is keyed by game name
+   (case-insensitive) for one-off noise specific to that game's search results. Hard-coded
+   rather than DB-backed intentionally — see the module docstring.
+5. **`report.py`** — generates a single self-contained HTML file: all CSS/JS are inline
    Python string constants in this file, no build step, no external assets. Edit the
    `_CSS`/`_JS` strings directly rather than introducing a bundler/framework.
-5. **`notify.py`** — pushes a summary to ntfy.sh if `NTFY_TOPIC` is set.
+6. **`notify.py`** — if `NTFY_TOPIC` is set, `search.py` pushes a summary to ntfy.sh, but
+   only when a run has new listings (silent otherwise). Title is the total new-listing
+   count across games; body is a per-game breakdown (auction/BIN counts, cheapest new
+   price including shipping). Notification includes an icon (for iOS previews) and, if
+   `PUBLISHED_REPORT_DOMAIN` + `EBAY_S3_KEY` are set, a tap-through link to the published
+   report.
 
 ## Known gotchas
 
