@@ -18,11 +18,15 @@ Pipeline, run start-to-finish by `search.py`:
    guides/cases/repro noise). No retry/backoff logic.
 3. **`store.py`** — SQLite (`output/listings.db`). `listings.item_id` is the primary
    key; `ON CONFLICT` only updates `price`, `shipping_price`, `shipping_cost_type`,
-   `has_best_offer`, `bid_count`, `last_seen`, `last_run_id` — NOT `game_name`. If the
-   same eBay item ever matches more than one game's search query, it keeps whichever
-   `game_name` it was first inserted under. `has_best_offer` is derived from whether
-   `"BEST_OFFER"` is in the Browse API's `buyingOptions` for that item (i.e. "Make
-   Offer" is enabled), separate from `buying_option` (AUCTION vs FIXED_PRICE).
+   `has_best_offer`, `bid_count`, `seller_feedback_score`, `seller_feedback_percentage`,
+   `original_price`, `listed_date` (via `COALESCE`, so it's only backfilled if previously
+   NULL — never overwritten), `last_seen`, `last_run_id` — NOT `game_name`, `seller`
+   (username), or `epid`. If the same eBay item ever matches more than one game's search
+   query, it keeps whichever `game_name` it was first inserted under. `has_best_offer` is
+   derived from whether `"BEST_OFFER"` is in the Browse API's `buyingOptions` for that
+   item (i.e. "Make Offer" is enabled), separate from `buying_option` (AUCTION vs
+   FIXED_PRICE). `epid` (eBay product ID) is captured but not currently surfaced in the
+   report.
 4. **`denylist.py`** — filters listings by title before they're stored/reported.
    `GLOBAL_DENYLIST` applies to every search; `PER_GAME_DENYLIST` is keyed by game name
    (case-insensitive) for one-off noise specific to that game's search results. Hard-coded
