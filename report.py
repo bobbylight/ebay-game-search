@@ -78,7 +78,8 @@ tr.hidden-by-type, tr.hidden-by-deal, tr.hidden-by-new { display: none; }
 .ship-note { font-size: .78rem; color: #999; white-space: nowrap; }
 .ship-note.free { color: #16a34a; }
 .ship-note.unknown { font-style: italic; }
-.ending-soon { color: #dc2626; font-weight: 600; }
+.lvl-warn { color: #b45309; font-weight: 600; }
+.lvl-danger { color: #dc2626; font-weight: 600; }
 .good-deal { color: #16a34a; font-weight: 700; }
 .new-badge { background: #dcfce7; color: #166534; border: 1px solid #86efac;
              display: inline-block; padding: .1rem .45rem; border-radius: 4px;
@@ -251,33 +252,48 @@ def _hours_left(ts: str | None) -> float | None:
         return None
 
 
-def _fmt_end(ts: str | None) -> tuple[str, bool, float]:
-    """Returns (display_str, is_ending_soon, hours_for_sort)."""
+def _fmt_end(ts: str | None) -> tuple[str, str, float]:
+    """Returns (display_str, severity_level, hours_for_sort). severity_level is
+    "" (>2 days left), "warn" (1-2 days left), or "danger" (<1 day left)."""
     hours = _hours_left(ts)
     if hours is None:
-        return "—", False, 9999.0   # BIN: no end time; sort to end
-    soon = hours < 6
-    if hours < 1:
-        return f"{int(hours * 60)}m", soon, hours
+        return "—", "", 9999.0   # BIN: no end time; sort to end
     if hours < 24:
-        return f"{hours:.1f}h", soon, hours
-    return f"{int(hours // 24)}d {int(hours % 24)}h", soon, hours
+        level = "danger"
+    elif hours < 48:
+        level = "warn"
+    else:
+        level = ""
+    if hours < 1:
+        return f"{int(hours * 60)}m", level, hours
+    if hours < 24:
+        return f"{hours:.1f}h", level, hours
+    return f"{int(hours // 24)}d {int(hours % 24)}h", level, hours
 
 
-def _fmt_age(listed_date: str | None) -> tuple[str, float]:
-    """Returns (display_str, hours_for_sort) for how long a listing has been up."""
+def _fmt_age(listed_date: str | None) -> tuple[str, str, float]:
+    """Returns (display_str, severity_level, hours_for_sort) for how long a listing
+    has been up. severity_level is "" (<60 days), "warn" (60-90 days), or "danger"
+    (>=90 days)."""
     if not listed_date:
-        return "—", 9999.0
+        return "—", "", 9999.0
     try:
         listed = datetime.fromisoformat(listed_date.replace("Z", "+00:00"))
     except ValueError:
-        return "—", 9999.0
+        return "—", "", 9999.0
     hours = (datetime.now(timezone.utc) - listed).total_seconds() / 3600
+    days = hours / 24
+    if days >= 90:
+        level = "danger"
+    elif days >= 60:
+        level = "warn"
+    else:
+        level = ""
     if hours < 1:
-        return f"{int(hours * 60)}m", hours
+        return f"{int(hours * 60)}m", level, hours
     if hours < 24:
-        return f"{hours:.1f}h", hours
-    return f"{int(hours // 24)}d {int(hours % 24)}h", hours
+        return f"{hours:.1f}h", level, hours
+    return f"{int(hours // 24)}d {int(hours % 24)}h", level, hours
 
 
 def _effective_price(row: dict) -> float | None:
@@ -321,7 +337,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15) 
     legend_html = f"""<div class="legend">
   <strong>Filter:</strong>
   <button class="legend-filter" data-filter="deal"><span class="badge deal">📉 Bargain</span> - Below PC value</button>
-  <button class="legend-filter" data-filter="auction"><span class="badge auction">🔨 Auction</span> - Active bid with end time</button>
+  <button class="legend-filter" data-filter="auction"><span class="badge auction">🔨 Auction</span> - Bidding with end time</button>
   <button class="legend-filter" data-filter="bin"><span class="badge bin">🛒 BIN</span> - Buy It Now</button>
   <button class="legend-filter off" data-filter="new"><span class="new-badge">✦ New</span> - Listed &lt; {new_hours}h ago</button>
   <span><span class="badge offer">🏷️ Offer</span> - Make Offer accepted</span>
@@ -407,9 +423,10 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15) 
                 seller_disp = seller_name
             else:
                 seller_disp = "—"
-            end_str, soon, hours_val = _fmt_end(r.get("end_time"))
-            end_cls = ' class="ending-soon"' if soon else ""
-            age_str, age_hours = _fmt_age(r.get("listed_date"))
+            end_str, end_level, hours_val = _fmt_end(r.get("end_time"))
+            end_cls = f' class="lvl-{end_level}"' if end_level else ""
+            age_str, age_level, age_hours = _fmt_age(r.get("listed_date"))
+            age_cls = f' class="lvl-{age_level}"' if age_level else ""
             pc_attr = f'{list_price:.2f}' if list_price is not None else ""
             trs.append(
                 f'<tr data-type="{row_type}" data-pc-price="{pc_attr}" data-new="{"true" if is_new else "false"}">'
@@ -419,7 +436,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15) 
                 f'<td data-label="Price" data-price="{price_attr}" class="price{price_cls}">{price_disp}{ship_note}{bids}</td>'
                 f'<td data-label="Cond." data-condition="{cond}">{cond}</td>'
                 f'<td data-label="Seller">{seller_disp}</td>'
-                f'<td data-label="Avail." data-age="{age_hours:.2f}">{age_str}</td>'
+                f'<td data-label="Avail." data-age="{age_hours:.2f}"{age_cls}>{age_str}</td>'
                 f'<td data-label="Ends" data-hours="{hours_val:.2f}"{end_cls}>{end_str}</td>'
                 f'</tr>'
             )
