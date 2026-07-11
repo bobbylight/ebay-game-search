@@ -69,6 +69,7 @@ a:hover { text-decoration: underline; }
 .auction { background: #fef3c7; color: #92400e; }
 .bin     { background: #dbeafe; color: #1e40af; }
 .deal    { background: #dcfce7; color: #166534; }
+.offer   { background: #f3e8ff; color: #6b21a8; }
 .count-badges { margin-left: auto; display: flex; gap: .35rem; flex-shrink: 0; align-items: center; }
 details.game.hidden-by-filter, details.game.hidden-by-type { display: none; }
 tr.hidden-by-type, tr.hidden-by-deal, tr.hidden-by-new { display: none; }
@@ -285,6 +286,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
   <button class="legend-filter" data-filter="auction"><span class="badge auction">🔨 Auction</span> - Active bid with end time</button>
   <button class="legend-filter" data-filter="bin"><span class="badge bin">🛒 BIN</span> - Buy It Now</button>
   <button class="legend-filter off" data-filter="new"><span class="new-badge">✦ New</span> - New listings</button>
+  <span><span class="badge offer">🏷️ Offer</span> - Make Offer accepted</span>
 </div>"""
 
     filter_html = """<div class="filter-box">
@@ -325,8 +327,9 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
             row_type = "auction" if opt == "AUCTION" else "bin"
             is_new = r.get("item_id") in new_ids
             type_badge = '<span class="badge auction">🔨 Auction</span>' if opt == "AUCTION" else '<span class="badge bin">🛒 BIN</span>'
+            offer_badge = ' <span class="badge offer">🏷️ Offer</span>' if r.get("has_best_offer") else ""
             new_row_badge = ' <span class="new-badge">✦ New</span>' if is_new else ""
-            badge = f"{type_badge}{new_row_badge}"
+            badge = f"{type_badge}{offer_badge}{new_row_badge}"
             price_val = r.get("price")
             shipping_val = r.get("shipping_price")
             effective_val = _effective_price(r)

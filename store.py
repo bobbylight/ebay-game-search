@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS listings (
     shipping_cost_type TEXT,
     currency      TEXT,
     buying_option TEXT,
+    has_best_offer INTEGER,
     end_time      TEXT,
     bid_count     INTEGER,
     condition     TEXT,
@@ -41,6 +42,8 @@ def _conn() -> sqlite3.Connection:
         con.execute("ALTER TABLE listings ADD COLUMN shipping_price REAL")
     if "shipping_cost_type" not in existing_cols:
         con.execute("ALTER TABLE listings ADD COLUMN shipping_cost_type TEXT")
+    if "has_best_offer" not in existing_cols:
+        con.execute("ALTER TABLE listings ADD COLUMN has_best_offer INTEGER")
     return con
 
 
@@ -63,6 +66,7 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
     for item in items:
         options = item.get("buyingOptions", [])
         buying_option = "AUCTION" if "AUCTION" in options else (options[0] if options else None)
+        has_best_offer = "BEST_OFFER" in options
 
         # Auctions expose currentBidPrice; fixed-price listings expose price.
         price_block = item.get("currentBidPrice") or item.get("price")
@@ -85,13 +89,14 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
             """
             INSERT INTO listings
                 (item_id, game_name, title, price, shipping_price, shipping_cost_type, currency, buying_option,
-                 end_time, bid_count, condition, seller, url, image_url,
+                 has_best_offer, end_time, bid_count, condition, seller, url, image_url,
                  first_seen, last_seen, last_run_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(item_id) DO UPDATE SET
                 price              = excluded.price,
                 shipping_price     = excluded.shipping_price,
                 shipping_cost_type = excluded.shipping_cost_type,
+                has_best_offer     = excluded.has_best_offer,
                 bid_count          = excluded.bid_count,
                 last_seen          = excluded.last_seen,
                 last_run_id        = excluded.last_run_id
@@ -105,6 +110,7 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
                 shipping_cost_type,
                 currency,
                 buying_option,
+                has_best_offer,
                 item.get("itemEndDate"),
                 item.get("bidCount"),
                 item.get("condition"),

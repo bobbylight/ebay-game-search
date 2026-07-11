@@ -143,6 +143,22 @@ configured (`~/.aws/credentials`, environment variables, or an IAM role).
 
 If `EBAY_S3_BUCKET` is empty the upload step is silently skipped.
 
+## Push Notifications
+
+Set `NTFY_TOPIC` in `.env` to get a push notification via [ntfy.sh](https://ntfy.sh) whenever
+a run turns up new listings (nothing is sent on runs with no new listings). The notification
+title summarizes the total new-listing count across games; the body breaks it down per game
+(auction/BIN counts and the cheapest new price, shipping included). It includes an NES icon
+for iOS previews and, if `PUBLISHED_REPORT_DOMAIN`/`EBAY_S3_KEY` are set, tapping it opens the
+published report.
+
+```
+NTFY_TOPIC=your-topic-name
+```
+
+Subscribe to the same topic in the [ntfy app](https://ntfy.sh/app) (or via the web) to receive
+the pushes.
+
 ## Requirements
 
 ```
