@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS listings (
     bid_count     INTEGER,
     condition     TEXT,
     seller        TEXT,
+    original_price REAL,
     url           TEXT,
     image_url     TEXT,
     first_seen    TEXT NOT NULL,
@@ -44,6 +45,8 @@ def _conn() -> sqlite3.Connection:
         con.execute("ALTER TABLE listings ADD COLUMN shipping_cost_type TEXT")
     if "has_best_offer" not in existing_cols:
         con.execute("ALTER TABLE listings ADD COLUMN has_best_offer INTEGER")
+    if "original_price" not in existing_cols:
+        con.execute("ALTER TABLE listings ADD COLUMN original_price REAL")
     return con
 
 
@@ -85,19 +88,31 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
         shipping_price = float(shipping_cost_block["value"]) if shipping_cost_block else None
         shipping_cost_type = shipping_options[0].get("shippingCostType") if shipping_options else None
 
+        # MARKDOWN is the only priceTreatment we treat as a genuine "seller cut
+        # the price" signal worth showing struck-through. LIST_PRICE is excluded:
+        # eBay's docs note it's no longer issued to new sellers and is prone to
+        # artificial price anchoring (list high, "discount" to the real price).
+        marketing_price = item.get("marketingPrice") or {}
+        original_price = None
+        if marketing_price.get("priceTreatment") == "MARKDOWN":
+            orig_block = marketing_price.get("originalPrice")
+            if orig_block:
+                original_price = float(orig_block["value"])
+
         con.execute(
             """
             INSERT INTO listings
                 (item_id, game_name, title, price, shipping_price, shipping_cost_type, currency, buying_option,
-                 has_best_offer, end_time, bid_count, condition, seller, url, image_url,
+                 has_best_offer, end_time, bid_count, condition, seller, original_price, url, image_url,
                  first_seen, last_seen, last_run_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(item_id) DO UPDATE SET
                 price              = excluded.price,
                 shipping_price     = excluded.shipping_price,
                 shipping_cost_type = excluded.shipping_cost_type,
                 has_best_offer     = excluded.has_best_offer,
                 bid_count          = excluded.bid_count,
+                original_price     = excluded.original_price,
                 last_seen          = excluded.last_seen,
                 last_run_id        = excluded.last_run_id
             """,
@@ -115,6 +130,7 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
                 item.get("bidCount"),
                 item.get("condition"),
                 (item.get("seller") or {}).get("username"),
+                original_price,
                 item.get("itemWebUrl"),
                 (item.get("image") or {}).get("imageUrl"),
                 now, now, run_id,
