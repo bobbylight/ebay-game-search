@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import os
 
@@ -96,7 +96,7 @@ tr.hidden-by-type, tr.hidden-by-deal, tr.hidden-by-new { display: none; }
                    border: 1px solid #e5e7eb; border-radius: 6px;
                    margin-bottom: .5rem; padding: .4rem .5rem; background: #fafafa; }
   table tbody tr:last-child { margin-bottom: 0; }
-  table tbody td:first-child { grid-column: 1; grid-row: 1 / 8; display: flex;
+  table tbody td:first-child { grid-column: 1; grid-row: 1 / 9; display: flex;
                                 align-items: flex-start; padding: .2rem 0 0; border: none; }
   table tbody td:first-child .thumb { width: 128px; height: 128px; }
   table tbody td:not(:first-child) { grid-column: 2; display: flex; align-items: baseline;
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
         rows.sort(function (a, b) {
             const av = a.querySelector('td[data-' + col + ']')?.dataset[col] ?? '';
             const bv = b.querySelector('td[data-' + col + ']')?.dataset[col] ?? '';
-            if (col === 'price' || col === 'hours') {
+            if (col === 'price' || col === 'hours' || col === 'age') {
                 const an = parseFloat(av);
                 const bn = parseFloat(bv);
                 const ai = isNaN(an) ? (asc ? Infinity : -Infinity) : an;
@@ -221,6 +221,22 @@ document.addEventListener('DOMContentLoaded', function () {
 """
 
 
+_NEW_WINDOW = timedelta(hours=48)
+
+
+def _is_new(listed_date: str | None) -> bool:
+    """"New" means listed on eBay in the last 48h - not "first fetched by this
+    app in its last run", since the app runs hourly and a listing shouldn't
+    stop being "new" just because you missed checking the report for a bit."""
+    if not listed_date:
+        return False
+    try:
+        listed = datetime.fromisoformat(listed_date.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return datetime.now(timezone.utc) - listed < _NEW_WINDOW
+
+
 def _hours_left(ts: str | None) -> float | None:
     if not ts:
         return None
@@ -244,6 +260,22 @@ def _fmt_end(ts: str | None) -> tuple[str, bool, float]:
     return f"{int(hours // 24)}d {int(hours % 24)}h", soon, hours
 
 
+def _fmt_age(listed_date: str | None) -> tuple[str, float]:
+    """Returns (display_str, hours_for_sort) for how long a listing has been up."""
+    if not listed_date:
+        return "—", 9999.0
+    try:
+        listed = datetime.fromisoformat(listed_date.replace("Z", "+00:00"))
+    except ValueError:
+        return "—", 9999.0
+    hours = (datetime.now(timezone.utc) - listed).total_seconds() / 3600
+    if hours < 1:
+        return f"{int(hours * 60)}m", hours
+    if hours < 24:
+        return f"{hours:.1f}h", hours
+    return f"{int(hours // 24)}d {int(hours % 24)}h", hours
+
+
 def _effective_price(row: dict) -> float | None:
     """Item price plus shipping, i.e. the actual all-in cost to compare against
     PriceCharting. Unknown shipping (local pickup/freight, no shippingOptions
@@ -260,7 +292,7 @@ def _cheapest_n(rows: list[dict], n: int) -> list[dict]:
     return sorted(rows, key=lambda r: (_effective_price(r) is None, _effective_price(r) or 0))[:n]
 
 
-def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, new_ids: set[str] = frozenset()) -> Path:
+def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15) -> Path:
     by_game: dict[str, list[dict]] = defaultdict(list)
     for lst in listings:
         by_game[lst["game_name"]].append(lst)
@@ -271,7 +303,8 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
     auction_count = sum(1 for l in trimmed if l.get("buying_option") == "AUCTION")
     bin_count = len(trimmed) - auction_count
     games_with = sum(1 for g in games if g["name"] in by_game)
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    now = datetime.now()
+    now_str = f'{now.strftime("%b")} {now.day} @ {now.strftime("%I:%M %p").lstrip("0")}'
     wishlist_url = os.getenv("PRICECHARTING_WISHLIST_URL", "")
 
     summary_html = """<div class="summary">
@@ -280,12 +313,13 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
   <div class="stat"><div class="n">{bc}</div><div class="label">Buy It Now</div></div>
 </div>""".format(gw=games_with, gt=len(games), ac=auction_count, bc=bin_count)
 
-    legend_html = """<div class="legend">
+    new_hours = int(_NEW_WINDOW.total_seconds() // 3600)
+    legend_html = f"""<div class="legend">
   <strong>Filter:</strong>
   <button class="legend-filter" data-filter="deal"><span class="badge deal">📉 Bargain</span> - Below PC value</button>
   <button class="legend-filter" data-filter="auction"><span class="badge auction">🔨 Auction</span> - Active bid with end time</button>
   <button class="legend-filter" data-filter="bin"><span class="badge bin">🛒 BIN</span> - Buy It Now</button>
-  <button class="legend-filter off" data-filter="new"><span class="new-badge">✦ New</span> - New listings</button>
+  <button class="legend-filter off" data-filter="new"><span class="new-badge">✦ New</span> - Listed &lt; {new_hours}h ago</button>
   <span><span class="badge offer">🏷️ Offer</span> - Make Offer accepted</span>
 </div>"""
 
@@ -304,7 +338,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
               f': ${game["list_price"]:.2f}</span>') if game.get("list_price") else ""
         auction_cnt = sum(1 for r in rows if r.get("buying_option") == "AUCTION")
         bin_cnt = len(rows) - auction_cnt
-        has_new = any(r.get("item_id") in new_ids for r in rows)
+        has_new = any(_is_new(r.get("listed_date")) for r in rows)
         new_header = '<span class="new-badge">✦ New</span>' if has_new else ""
         count_badges = (
             f'<span class="count-badges">'
@@ -325,7 +359,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
         for r in rows:
             opt = r.get("buying_option", "")
             row_type = "auction" if opt == "AUCTION" else "bin"
-            is_new = r.get("item_id") in new_ids
+            is_new = _is_new(r.get("listed_date"))
             type_badge = '<span class="badge auction">🔨 Auction</span>' if opt == "AUCTION" else '<span class="badge bin">🛒 BIN</span>'
             offer_badge = ' <span class="badge offer">🏷️ Offer</span>' if r.get("has_best_offer") else ""
             new_row_badge = ' <span class="new-badge">✦ New</span>' if is_new else ""
@@ -361,6 +395,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
             cond = r.get("condition") or "—"
             end_str, soon, hours_val = _fmt_end(r.get("end_time"))
             end_cls = ' class="ending-soon"' if soon else ""
+            age_str, age_hours = _fmt_age(r.get("listed_date"))
             pc_attr = f'{list_price:.2f}' if list_price is not None else ""
             trs.append(
                 f'<tr data-type="{row_type}" data-pc-price="{pc_attr}" data-new="{"true" if is_new else "false"}">'
@@ -370,6 +405,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
                 f'<td data-label="Price" data-price="{price_attr}" class="price{price_cls}">{price_disp}{ship_note}{bids}</td>'
                 f'<td data-label="Cond." data-condition="{cond}">{cond}</td>'
                 f'<td data-label="Seller">{r.get("seller") or "—"}</td>'
+                f'<td data-label="Avail." data-age="{age_hours:.2f}">{age_str}</td>'
                 f'<td data-label="Ends" data-hours="{hours_val:.2f}"{end_cls}>{end_str}</td>'
                 f'</tr>'
             )
@@ -382,6 +418,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
         <th class="sortable" data-col="price">Price</th>
         <th class="sortable" data-col="condition">Condition</th>
         <th>Seller</th>
+        <th class="sortable" data-col="age">Available For</th>
         <th class="sortable" data-col="hours">Ends In</th>
       </tr></thead>
       <tbody>{"".join(trs)}</tbody>
@@ -408,7 +445,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
   <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAABg0lEQVR4nO3Yv0rDUBQG8KCDgz6AjtnsG+iaSd9AZxcjdOq5RacsQn0C9Q10dapLZx3d/LN8B0TaLNk61iuFikVC7r1pI0c4H3xDA5eeX+4NKY0ijUaj0WhKwsxbzGyX3TiOK8slawBsRqEBsC8IsFcHcCYIcBoMYObbJgCDwaCyXL7upg7gRRDgOWj44XC4DmAiBQBgkuf5hjcAwG4Twy+wAxbATgggFQg49gYw87U0ADNfhQAeBQIevIa31q4CGEsDABhPZ3MCALSaGn7BHbAAtn0AhyFfGNo6b2L+ARz4AC6kApi55wQw830ZYFlHaEFA3wcwEgzInYCiKOx8vwG/r9dtkiSVLRzrFfB2knpVAYUeoeJ/Aowxtsm6AKZiLRF9OAFENBEMePcB3DUNmP7onTaZDT3/2bH+0gnodDqJz51zXW8A8NntdltOwGwXngQC+l7Dz3bhSNoRIiL/f+fa7fYaEY0EPcSvWZatRCExxpxLARBRGjS8RqPRaDSa6G/yBXY7jBJLE1gkAAAAAElFTkSuQmCC" alt="nintendo-entertainment-system">
   eBay NES Game Tracker
 </h1>
-<p class="meta">The {limit_per_game} cheapest listings for games <a href="{wishlist_url}">on my PriceCharting wishlist</a>. Last updated {now_str}</p>
+<p class="meta">The {limit_per_game} cheapest listings for games <a href="{wishlist_url}">on my PriceCharting wishlist</a>. Last updated <strong>{now_str}</strong></p>
 <div class="top-controls">
 {summary_html}
 {filter_html}

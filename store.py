@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS listings (
     original_price REAL,
     url           TEXT,
     image_url     TEXT,
+    listed_date   TEXT,
     first_seen    TEXT NOT NULL,
     last_seen     TEXT NOT NULL,
     last_run_id   INTEGER NOT NULL REFERENCES runs(id)
@@ -47,6 +48,8 @@ def _conn() -> sqlite3.Connection:
         con.execute("ALTER TABLE listings ADD COLUMN has_best_offer INTEGER")
     if "original_price" not in existing_cols:
         con.execute("ALTER TABLE listings ADD COLUMN original_price REAL")
+    if "listed_date" not in existing_cols:
+        con.execute("ALTER TABLE listings ADD COLUMN listed_date TEXT")
     return con
 
 
@@ -104,8 +107,8 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
             INSERT INTO listings
                 (item_id, game_name, title, price, shipping_price, shipping_cost_type, currency, buying_option,
                  has_best_offer, end_time, bid_count, condition, seller, original_price, url, image_url,
-                 first_seen, last_seen, last_run_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 listed_date, first_seen, last_seen, last_run_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(item_id) DO UPDATE SET
                 price              = excluded.price,
                 shipping_price     = excluded.shipping_price,
@@ -113,6 +116,7 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
                 has_best_offer     = excluded.has_best_offer,
                 bid_count          = excluded.bid_count,
                 original_price     = excluded.original_price,
+                listed_date        = COALESCE(listings.listed_date, excluded.listed_date),
                 last_seen          = excluded.last_seen,
                 last_run_id        = excluded.last_run_id
             """,
@@ -133,6 +137,7 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
                 original_price,
                 item.get("itemWebUrl"),
                 (item.get("image") or {}).get("imageUrl"),
+                item.get("itemCreationDate"),
                 now, now, run_id,
             ),
         )

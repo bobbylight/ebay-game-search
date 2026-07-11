@@ -134,11 +134,10 @@ def main():
         print(f"  {game['name']}: {len(items)} results{suffix}")
 
     new_listings = get_new_listings(run_id)
-    new_ids = {l["item_id"] for l in new_listings}
 
     listings = get_latest_listings()
-    report_path = generate(listings, games, limit_per_game=args.results_per_game, new_ids=new_ids)
-    print(f"Done — {total} listings stored, {len(listings)} active, {len(new_ids)} new")
+    report_path = generate(listings, games, limit_per_game=args.results_per_game)
+    print(f"Done — {total} listings stored, {len(listings)} active, {len(new_listings)} new")
     print(f"Report → {report_path}")
 
     report_url = None
