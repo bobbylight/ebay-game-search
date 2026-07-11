@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS listings (
     bid_count     INTEGER,
     condition     TEXT,
     seller        TEXT,
+    seller_feedback_score INTEGER,
+    seller_feedback_percentage REAL,
     original_price REAL,
     url           TEXT,
     image_url     TEXT,
@@ -53,6 +55,10 @@ def _conn() -> sqlite3.Connection:
         con.execute("ALTER TABLE listings ADD COLUMN listed_date TEXT")
     if "epid" not in existing_cols:
         con.execute("ALTER TABLE listings ADD COLUMN epid TEXT")
+    if "seller_feedback_score" not in existing_cols:
+        con.execute("ALTER TABLE listings ADD COLUMN seller_feedback_score INTEGER")
+    if "seller_feedback_percentage" not in existing_cols:
+        con.execute("ALTER TABLE listings ADD COLUMN seller_feedback_percentage REAL")
     return con
 
 
@@ -105,19 +111,27 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
             if orig_block:
                 original_price = float(orig_block["value"])
 
+        seller = item.get("seller") or {}
+        # feedbackPercentage comes back as a numeric string (e.g. "99.5"), not a number.
+        feedback_pct = seller.get("feedbackPercentage")
+        feedback_pct = float(feedback_pct) if feedback_pct is not None else None
+
         con.execute(
             """
             INSERT INTO listings
                 (item_id, game_name, title, price, shipping_price, shipping_cost_type, currency, buying_option,
-                 has_best_offer, end_time, bid_count, condition, seller, original_price, url, image_url,
+                 has_best_offer, end_time, bid_count, condition, seller, seller_feedback_score,
+                 seller_feedback_percentage, original_price, url, image_url,
                  listed_date, epid, first_seen, last_seen, last_run_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(item_id) DO UPDATE SET
                 price              = excluded.price,
                 shipping_price     = excluded.shipping_price,
                 shipping_cost_type = excluded.shipping_cost_type,
                 has_best_offer     = excluded.has_best_offer,
                 bid_count          = excluded.bid_count,
+                seller_feedback_score      = excluded.seller_feedback_score,
+                seller_feedback_percentage = excluded.seller_feedback_percentage,
                 original_price     = excluded.original_price,
                 listed_date        = COALESCE(listings.listed_date, excluded.listed_date),
                 last_seen          = excluded.last_seen,
@@ -136,7 +150,9 @@ def upsert_listings(items: list[dict], game_name: str, run_id: int) -> int:
                 item.get("itemEndDate"),
                 item.get("bidCount"),
                 item.get("condition"),
-                (item.get("seller") or {}).get("username"),
+                seller.get("username"),
+                seller.get("feedbackScore"),
+                feedback_pct,
                 original_price,
                 item.get("itemWebUrl"),
                 (item.get("image") or {}).get("imageUrl"),

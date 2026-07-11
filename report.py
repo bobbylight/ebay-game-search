@@ -65,6 +65,8 @@ tr:hover td { background: #f8f9ff; }
 a { color: #2563eb; text-decoration: none; }
 a:hover { text-decoration: underline; }
 .thumb { width: 40px; height: 40px; object-fit: contain; }
+.seller-space { display: none; }
+.seller-score { color: #999; }
 .badge { display: inline-block; padding: .1rem .4rem; border-radius: 4px; font-size: .73rem; font-weight: 600; white-space: nowrap; }
 .auction { background: #fef3c7; color: #92400e; }
 .bin     { background: #dbeafe; color: #1e40af; }
@@ -104,6 +106,8 @@ tr.hidden-by-type, tr.hidden-by-deal, tr.hidden-by-new { display: none; }
   table tbody td[data-label]::before { content: attr(data-label); min-width: 52px;
     font-size: .7rem; color: #aaa; text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; }
   table tbody td[data-label=""]::before { display: none; }
+  .seller-break { display: none; }
+  .seller-space { display: inline; }
 }
 """
 
@@ -393,6 +397,16 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15) 
             bids = f' <span style="color:#999;font-size:.8rem">({r["bid_count"]} bids)</span>' if r.get("bid_count") else ""
             img = f'<img class="thumb" src="{r["image_url"]}">' if r.get("image_url") else ""
             cond = r.get("condition") or "—"
+            seller_name = r.get("seller")
+            fb_score = r.get("seller_feedback_score")
+            fb_pct = r.get("seller_feedback_percentage")
+            if seller_name and fb_score is not None and fb_pct is not None:
+                seller_disp = (f'<span>{seller_name}<br class="seller-break"><span class="seller-space"> </span>'
+                               f'(<span class="seller-score">{fb_score}</span>) - {fb_pct:g}%</span>')
+            elif seller_name:
+                seller_disp = seller_name
+            else:
+                seller_disp = "—"
             end_str, soon, hours_val = _fmt_end(r.get("end_time"))
             end_cls = ' class="ending-soon"' if soon else ""
             age_str, age_hours = _fmt_age(r.get("listed_date"))
@@ -404,7 +418,7 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15) 
                 f'<td data-label=""><a href="{r.get("url", "#")}" target="_blank">{r.get("title", "")}</a></td>'
                 f'<td data-label="Price" data-price="{price_attr}" class="price{price_cls}">{price_disp}{ship_note}{bids}</td>'
                 f'<td data-label="Cond." data-condition="{cond}">{cond}</td>'
-                f'<td data-label="Seller">{r.get("seller") or "—"}</td>'
+                f'<td data-label="Seller">{seller_disp}</td>'
                 f'<td data-label="Avail." data-age="{age_hours:.2f}">{age_str}</td>'
                 f'<td data-label="Ends" data-hours="{hours_val:.2f}"{end_cls}>{end_str}</td>'
                 f'</tr>'
