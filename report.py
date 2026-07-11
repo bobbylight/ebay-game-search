@@ -334,7 +334,16 @@ def generate(listings: list[dict], games: list[dict], limit_per_game: int = 15, 
             shipping_val = r.get("shipping_price")
             effective_val = _effective_price(r)
             price_attr = f'{effective_val:.2f}' if effective_val is not None else "9999"
-            price_disp = f'${price_val:.2f}' if price_val is not None else "—"
+            original_price = r.get("original_price")
+            if price_val is None:
+                price_disp = "—"
+            elif original_price is not None:
+                # original_price is only set for MARKDOWN price treatments (seller
+                # actually cut the price) - shown struck through in the default
+                # font color so it doesn't compete with the good-deal green below.
+                price_disp = f'<span style="text-decoration:line-through;color:#1a1a1a">${original_price:.2f}</span> ${price_val:.2f}'
+            else:
+                price_disp = f'${price_val:.2f}'
             if shipping_val is None and r.get("shipping_cost_type") == "CALCULATED":
                 # eBay's API frequently can't price CALCULATED shipping (errorId
                 # 11510) even with a buyer zip supplied - not a fetch failure.
