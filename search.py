@@ -123,9 +123,13 @@ def main():
 
         # Filter out auctions whose titles have keywords that indicate they're NOT what we're looking
         # for. Typical with e.g. games with sequels, or on multiple platforms, etc., where we might
-        # get false positives from our search results
+        # get false positives from our search results. Also filters out known-noise sellers
+        # (e.g. repro sellers) regardless of title.
         fetched = len(items)
-        items = [it for it in items if not denylist.is_denied(game["name"], it.get("title", ""))]
+        items = [
+            it for it in items
+            if not denylist.is_denied(game["name"], it.get("title", ""), (it.get("seller") or {}).get("username"))
+        ]
         denied = fetched - len(items)
 
         n = upsert_listings(items, game["name"], run_id)

@@ -1,4 +1,4 @@
-"""Per-game listing title denylist.
+"""Per-game listing title denylist, plus a seller username denylist.
 
 Hard-coded rather than stored in the DB: games are ephemeral in this pipeline
 (removed from the wishlist once bought), so there's little value in a
@@ -13,6 +13,9 @@ that game.
 
 GLOBAL_DENYLIST holds words/phrases applied to every game's search results
 (e.g. junk that shows up across the board like "lot" or "repro").
+
+USER_DENYLIST holds eBay seller usernames (matched case-insensitively) whose
+listings are always excluded, regardless of title, e.g. known repro sellers.
 """
 
 GLOBAL_DENYLIST: list[str] = [
@@ -35,12 +38,19 @@ PER_GAME_DENYLIST: dict[str, list[str]] = {
     ]
 }
 
+USER_DENYLIST: list[str] = [
+    "malja1990",  # Sells reproductions almost exclusively, labeled as such
+]
+
 _GLOBAL_DENYLIST_LOWER = [w.lower() for w in GLOBAL_DENYLIST]
 _PER_GAME_DENYLIST_LOWER = {k.lower(): [w.lower() for w in v] for k, v in PER_GAME_DENYLIST.items()}
+_USER_DENYLIST_LOWER = {u.lower() for u in USER_DENYLIST}
 
 
-def is_denied(game_name: str, title: str) -> bool:
+def is_denied(game_name: str, title: str, seller: str | None = None) -> bool:
     """True if `title` should be excluded from results for `game_name`."""
+    if seller and seller.lower() in _USER_DENYLIST_LOWER:
+        return True
     title_lower = title.lower()
     if any(w in title_lower for w in _GLOBAL_DENYLIST_LOWER):
         return True
