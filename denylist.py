@@ -33,13 +33,34 @@ GLOBAL_DENYLIST: list[str] = [
 
 PER_GAME_DENYLIST: dict[str, list[str]] = {
     # "Kid Icarus": ["reproduction", "repro", "manual only"],
+    "Batman The Video Game": [
+        "Return of the Joker",  # Actually one of the sequels/other Batman games
+    ],
+    "Bubble Bobble Part 2": [
+        "1986"                  # First game's launch year
+    ],
+    "Chip and Dale Rescue Rangers 2": [
+        "Rescue Rangers 1",
+        "1990"                  # Rescue Rangers 1 was released in 1990, 2 in 1994
+    ],
     "Godzilla 2": [
+        "1988",                 # Godzilla 1 JP
+        "1989",                 # Godzilla 1 US
         "Monster of Monsters",  # Subtitle of Godzilla 1, which is most often returned from searches
-    ]
+    ],
+    "Power Blade": [
+        "Power Blade 2",
+    ],
+    "Tiny Toon Adventures": [
+        "Adventures 2",         # Sequel
+        "Trouble in Wackyland", # Sequel
+    ],
 }
 
 USER_DENYLIST: list[str] = [
-    "malja1990",  # Sells reproductions almost exclusively, labeled as such
+    "aussie-export-bargains",  # Only sells PAL games obviously
+    "malja1990",               # Sells reproductions almost exclusively, labeled as such
+    "retro88",                 # Selling a single game, modified Gun-Nac cart with 2500+ games
 ]
 
 _GLOBAL_DENYLIST_LOWER = [w.lower() for w in GLOBAL_DENYLIST]
