@@ -35,11 +35,12 @@ Pipeline, run start-to-finish by `search.py`:
    Python string constants in this file, no build step, no external assets. Edit the
    `_CSS`/`_JS` strings directly rather than introducing a bundler/framework.
 6. **`notify.py`** — if `NTFY_TOPIC` is set, `search.py` pushes a summary to ntfy.sh, but
-   only when a run has new listings (silent otherwise). Title is the total new-listing
-   count across games; body is a per-game breakdown (auction/BIN counts, cheapest new
-   price including shipping). Notification includes an icon (for iOS previews) and, if
-   `PUBLISHED_REPORT_DOMAIN` + `EBAY_S3_KEY` are set, a tap-through link to the published
-   report.
+   only when a run has new listings priced below that game's PriceCharting value
+   (`search.py`'s `_below_pc_value`; silent otherwise — a new listing above PC value
+   doesn't page you). Title is the total new-listing count across games; body is a
+   per-game breakdown (auction/BIN counts, cheapest new price including shipping).
+   Notification includes an icon (for iOS previews) and, if `PUBLISHED_REPORT_DOMAIN` +
+   `EBAY_S3_KEY` are set, a tap-through link to the published report.
 
 ## Known gotchas
 

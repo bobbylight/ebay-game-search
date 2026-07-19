@@ -42,6 +42,26 @@ def _published_url() -> str | None:
     return None
 
 
+def _effective_price(lst: dict) -> float | None:
+    price = lst.get("price")
+    if price is None:
+        return None
+    return price + (lst.get("shipping_price") or 0)
+
+
+def _below_pc_value(new_listings: list[dict], games: list[dict]) -> list[dict]:
+    """Filters new_listings down to those priced below their game's PriceCharting
+    value - only "deals" are worth a push notification, not every new listing."""
+    list_prices = {g["name"]: g.get("list_price") for g in games}
+    result = []
+    for lst in new_listings:
+        list_price = list_prices.get(lst["game_name"])
+        effective = _effective_price(lst)
+        if list_price is not None and effective is not None and effective < list_price:
+            result.append(lst)
+    return result
+
+
 def _send_notification(new_listings: list[dict], report_url: str | None) -> None:
     topic = os.getenv("NTFY_TOPIC", "")
     if not topic or not new_listings:
@@ -155,7 +175,8 @@ def main():
         except Exception as e:
             print(f"S3 upload failed: {e}", file=sys.stderr)
 
-    _send_notification(new_listings, report_url)
+    deal_listings = _below_pc_value(new_listings, games)
+    _send_notification(deal_listings, report_url)
 
 
 if __name__ == "__main__":
