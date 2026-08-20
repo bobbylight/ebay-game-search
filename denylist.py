@@ -43,6 +43,10 @@ PER_GAME_DENYLIST: dict[str, list[str]] = {
         "Rescue Rangers 1",
         "1990"                  # Rescue Rangers 1 was released in 1990, 2 in 1994
     ],
+    "Duck Tales": [
+        "DuckTales 2",
+        "Duck Tales 2",
+    ],
     "Godzilla 2": [
         "1988",                 # Godzilla 1 JP
         "1989",                 # Godzilla 1 US
