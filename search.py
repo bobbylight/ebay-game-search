@@ -18,6 +18,10 @@ from ebay_client import EbayClient
 from store import start_run, upsert_listings, get_latest_listings, get_new_listings
 from report import generate
 
+# Games worth this much or less (per PriceCharting) aren't worth tracking - skip them
+# entirely rather than searching eBay, storing listings, reporting, or notifying on them.
+MIN_GAME_VALUE = 10.00
+
 
 def _upload_to_s3(report_path: Path, bucket: str, key: str) -> str:
     import boto3
@@ -112,6 +116,11 @@ def main():
     print("Fetching wishlist ...")
     games = wl.fetch(wishlist_url)
     print(f"  {len(games)} games")
+
+    skipped = [g for g in games if g.get("list_price") is not None and g["list_price"] <= MIN_GAME_VALUE]
+    if skipped:
+        print(f"  Skipping {len(skipped)} games worth <= ${MIN_GAME_VALUE:.2f}")
+    games = [g for g in games if g not in skipped]
 
     if args.report_only:
         listings = get_latest_listings()
