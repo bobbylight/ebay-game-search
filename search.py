@@ -20,7 +20,7 @@ from report import generate
 
 # Games worth this much or less (per PriceCharting) aren't worth tracking - skip them
 # entirely rather than searching eBay, storing listings, reporting, or notifying on them.
-MIN_GAME_VALUE = 10.00
+MIN_GAME_VALUE = 20.00
 
 
 def _upload_to_s3(report_path: Path, bucket: str, key: str) -> str:
