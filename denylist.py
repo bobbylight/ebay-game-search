@@ -65,6 +65,7 @@ USER_DENYLIST: list[str] = [
     "aussie-export-bargains",  # Only sells PAL games obviously
     "malja1990",               # Sells reproductions almost exclusively, labeled as such
     "retro88",                 # Selling a single game, modified Gun-Nac cart with 2500+ games
+    "samuel21tw",              # Sells repro carts
 ]
 
 _GLOBAL_DENYLIST_LOWER = [w.lower() for w in GLOBAL_DENYLIST]
