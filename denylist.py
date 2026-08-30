@@ -37,9 +37,12 @@ PER_GAME_DENYLIST: dict[str, list[str]] = {
         "Return of the Joker",  # Actually one of the sequels/other Batman games
     ],
     "Bubble Bobble Part 2": [
-        "1986"                  # First game's launch year
+        "1986",                 # First game's launch year
+        "Bobble N",             # "NES" and "Nintendo"
+        "Bobble (N",            # Not calling out "2" before NES/Nintendo
     ],
     "Chip and Dale Rescue Rangers 2": [
+        "Rangers N",            # "NES" and "Nintendo"
         "Rescue Rangers 1",
         "1990"                  # Rescue Rangers 1 was released in 1990, 2 in 1994
     ],
@@ -55,6 +58,9 @@ PER_GAME_DENYLIST: dict[str, list[str]] = {
     "Power Blade": [
         "Power Blade 2",
     ],
+    "Teenage Mutant Ninja Turtles Tournament Fighters": [
+        "SNES Teenage"
+    ],
     "Tiny Toon Adventures": [
         "Adventures 2",         # Sequel
         "Trouble in Wackyland", # Sequel
@@ -63,6 +69,7 @@ PER_GAME_DENYLIST: dict[str, list[str]] = {
 
 USER_DENYLIST: list[str] = [
     "aussie-export-bargains",  # Only sells PAL games obviously
+    "game142451",              # repro carts
     "malja1990",               # Sells reproductions almost exclusively, labeled as such
     "retro88",                 # Selling a single game, modified Gun-Nac cart with 2500+ games
     "samuel21tw",              # Sells repro carts
