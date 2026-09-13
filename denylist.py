@@ -43,6 +43,7 @@ PER_GAME_DENYLIST: dict[str, list[str]] = {
     ],
     "Chip and Dale Rescue Rangers 2": [
         "Rangers N",            # "NES" and "Nintendo"
+        "Rangers (N",           # "NES" and "Nintendo"
         "Rescue Rangers 1",
         "1990"                  # Rescue Rangers 1 was released in 1990, 2 in 1994
     ],
@@ -70,6 +71,7 @@ PER_GAME_DENYLIST: dict[str, list[str]] = {
 USER_DENYLIST: list[str] = [
     "aussie-export-bargains",  # Only sells PAL games obviously
     "game142451",              # repro carts
+    "jonzzz",                  # repro carts
     "malja1990",               # Sells reproductions almost exclusively, labeled as such
     "retro88",                 # Selling a single game, modified Gun-Nac cart with 2500+ games
     "samuel21tw",              # Sells repro carts
