@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -66,10 +67,44 @@ def _below_pc_value(new_listings: list[dict], games: list[dict]) -> list[dict]:
     return result
 
 
+ENDING_SOON_WINDOW = timedelta(hours=24)
+
+
+def _parse_end_time(end_time: str | None) -> datetime | None:
+    if not end_time:
+        return None
+    try:
+        return datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _ending_soon(listings: list[dict], now: datetime) -> list[tuple[dict, datetime]]:
+    """Auctions (among the deal listings) ending within ENDING_SOON_WINDOW, soonest first."""
+    result = []
+    for lst in listings:
+        if lst.get("buying_option") != "AUCTION":
+            continue
+        end_dt = _parse_end_time(lst.get("end_time"))
+        if end_dt is not None and now <= end_dt <= now + ENDING_SOON_WINDOW:
+            result.append((lst, end_dt))
+    result.sort(key=lambda pair: pair[1])
+    return result
+
+
+def _format_time_left(end_dt: datetime, now: datetime) -> str:
+    total_minutes = max(0, int((end_dt - now).total_seconds() // 60))
+    hours, minutes = divmod(total_minutes, 60)
+    return f"{hours}h {minutes}m" if hours else f"{minutes}m"
+
+
 def _send_notification(new_listings: list[dict], report_url: str | None) -> None:
     topic = os.getenv("NTFY_TOPIC", "")
     if not topic or not new_listings:
         return
+
+    now = datetime.now(timezone.utc)
+    ending_soon = _ending_soon(new_listings, now)
 
     by_game: dict[str, dict] = defaultdict(lambda: {"auction": 0, "bin": 0, "min_price": None})
     for lst in new_listings:
@@ -86,6 +121,14 @@ def _send_notification(new_listings: list[dict], report_url: str | None) -> None
     title = f"eBay NES: {total} new listing{'s' if total != 1 else ''} across {n_games} game{'s' if n_games != 1 else ''}"
 
     lines = []
+    if ending_soon:
+        lines.append("Auctions ending soon:")
+        for lst, end_dt in ending_soon:
+            price = _effective_price(lst)
+            price_str = f" (${price:.2f})" if price is not None else ""
+            lines.append(f"🔨 {lst['game_name']}{price_str} - {_format_time_left(end_dt, now)} left")
+        lines.append("")
+
     for game, counts in sorted(by_game.items()):
         parts = []
         if counts["auction"]:
