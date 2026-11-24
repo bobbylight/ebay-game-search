@@ -33,6 +33,9 @@ GLOBAL_DENYLIST: list[str] = [
 
 PER_GAME_DENYLIST: dict[str, list[str]] = {
     # "Kid Icarus": ["reproduction", "repro", "manual only"],
+    "Batman: Return of the Joker": [
+        "Batman Returns",       # Different game
+    ],
     "Batman The Video Game": [
         "Return of the Joker",  # Actually one of the sequels/other Batman games
     ],
@@ -60,7 +63,11 @@ PER_GAME_DENYLIST: dict[str, list[str]] = {
         "Power Blade 2",
     ],
     "Teenage Mutant Ninja Turtles Tournament Fighters": [
-        "SNES Teenage"
+        "SNES Teenage",
+        "Turtles II",
+    ],
+    "The Simpsons Bartman Meets Radioactive Man": [
+        "Space Mutants",        # Different Simpsons game
     ],
     "Tiny Toon Adventures": [
         "Adventures 2",         # Sequel
