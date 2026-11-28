@@ -50,6 +50,10 @@ PER_GAME_DENYLIST: dict[str, list[str]] = {
         "Rescue Rangers 1",
         "1990"                  # Rescue Rangers 1 was released in 1990, 2 in 1994
     ],
+    "Donkey Kong": [
+        "Kong 2",
+        "Kong 3",
+    ],
     "Duck Tales": [
         "DuckTales 2",
         "Duck Tales 2",
@@ -58,6 +62,9 @@ PER_GAME_DENYLIST: dict[str, list[str]] = {
         "1988",                 # Godzilla 1 JP
         "1989",                 # Godzilla 1 US
         "Monster of Monsters",  # Subtitle of Godzilla 1, which is most often returned from searches
+    ],
+    "Mario Bros [5 Screw]": [
+        "Super",                # Ignore Super Mario Bros games
     ],
     "Power Blade": [
         "Power Blade 2",
